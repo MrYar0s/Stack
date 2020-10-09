@@ -5,7 +5,7 @@ int main(){
     Stack steck;
 
     StackCreate(&steck);
-    printf("OK");
+    
     StackPush(&steck, 2);
 
     for(size_t p = 0; p < steck.len; p++){

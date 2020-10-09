@@ -1,32 +1,28 @@
 #include "stack.h"
 
 void StackCreate(Stack* tack){
-    assert(tack);
-    VERIFY;
-
-    tack->data = (element*) calloc(START * sizeof(element) + sizeof(CANARY_1) + sizeof(CANARY_2), sizeof(element));
-
-    for(size_t i = 0; i < START; i++)
-        *(tack->data + sizeof(CANARY_1) + sizeof(element) * i) = POISON;
-
-    *(tack->data) = CANARY_1;
-    *(tack->data + sizeof(CANARY_1) + START * sizeof(element)) = CANARY_2;
 
     tack->minlen = 0;
     tack->maxlen = START;
     tack->len = 0;
     tack->hash = 0;
 
+    tack->data = (element*) calloc(START * sizeof(element) + sizeof(CANARY_1) + sizeof(CANARY_2), sizeof(element));
+    *(tack->data) = CANARY_1;
+    *(tack->data + sizeof(CANARY_1) + START * sizeof(element)) = CANARY_2;
+
+    for(size_t i = 0; i < START; i++)
+        *(tack->data + sizeof(CANARY_1) + sizeof(element) * i) = POISON;
+
     VERIFY;
 }
 
 void StackDiscard(Stack* tack){
-    assert(tack);
+    
     VERIFY;
 
     for(size_t i = 0; i < tack->maxlen; ++i)
         *(tack->data + sizeof(CANARY_1) + i * sizeof(element)) = POISON;
-    
 
     tack->minlen = 0;
     tack->maxlen = 0;
@@ -36,14 +32,14 @@ void StackDiscard(Stack* tack){
 }
 
 element StackPop(Stack* tack){
-    assert(tack);
+
     VERIFY;
 
     tack->len--;
 
     if(tack->len < tack->minlen)
         MemShrink(tack);
-    
+
 
     element n = *(tack->data + sizeof(CANARY_1) + sizeof(element) * tack->len);
 
@@ -57,7 +53,7 @@ element StackPop(Stack* tack){
 }
 
 int StackPush(Stack* tack, element n){
-    assert(tack);
+
     VERIFY;
 
     tack->len++;
@@ -75,10 +71,10 @@ int StackPush(Stack* tack, element n){
 }
 
 void MemShrink(Stack* tack){
-    assert(tack);
+
     if(tack->minlen == 7)
         tack->minlen = 0;
-    
+
     tack->maxlen = tack->maxlen / 2;
     tack->minlen = tack->minlen / 2;
 
@@ -99,7 +95,7 @@ void MemShrink(Stack* tack){
 }
 
 void MemExpand(Stack* tack){
-    assert(tack);
+
     tack->minlen = (3 * tack->maxlen) / 4;
     tack->maxlen = tack->maxlen * 2;
 
@@ -110,20 +106,22 @@ void MemExpand(Stack* tack){
         exit(-1);
     }
 
+//    tack->data = (element*) realloc(tack->data, tack->maxlen * sizeof(element));
+
     *(tack->data) = CANARY_1;
     *(tack->data + sizeof(CANARY_1) + tack->maxlen * sizeof(element)) = CANARY_2;
 
 }
 
 int StackVerify(Stack* tack){
-    assert(tack);
+
     if(tack == nullptr)
         return STACK_STRUCT_NULLPTR;
 
     if((tack->data + sizeof(CANARY_1)) == nullptr)
         return STACK_NULLPTR;
 
-    if(tack->minlen > tack->maxlen || tack->minlen < 0 || tack->maxlen < 0 || tack->len < 0)
+    if(tack->minlen > tack->maxlen || tack->minlen > tack->len || tack->len > tack->maxlen)
         return INVALID_SIZE;
 
     if(*(tack->data + sizeof(CANARY_1) + tack->maxlen * sizeof(element)) != CANARY_2)
@@ -144,14 +142,14 @@ int StackVerify(Stack* tack){
 }
 
 int StackDump(Stack* tack, int err){
-    assert(tack);
+
     FILE* code = fopen("dump.txt", "w");
 
     fprintf(code, "#####ERROR#####\n");
 
     fprintf(code, "Upper limit = %zu\n", tack->maxlen);
 
-    fprintf(code, "Lower limit = %d\n", tack->minlen);
+    fprintf(code, "Lower limit = %zu\n", tack->minlen);
 
     fprintf(code, "Number of elements = %zu\n", tack->len);
 
@@ -169,7 +167,7 @@ int StackDump(Stack* tack, int err){
     if(*(tack->data + sizeof(CANARY_1) + sizeof(element)) == POISON)
         fprintf(code, "[2]: POISON\n");
     else
-        fprintf(code, "[2]: %lg\n", *(tack->data + sizeof(CANARY_1) + sizeof(element)));
+        fprintf(code, "[2]: %lg\n", *(tack->data + sizeof(CANARY_1) + sizeof(element) * tack->len));
 
     if(*(tack->data + sizeof(CANARY_1) + 2 * sizeof(element)) == POISON)
         fprintf(code, "[3]: POISON\n");
@@ -189,7 +187,7 @@ int StackDump(Stack* tack, int err){
     fprintf(code, ".........\n");
 
     if(tack->len > 3){
-    
+
         fprintf(code, "[%zu]: %lg\n", tack->len, *(tack->data + sizeof(CANARY_1) + sizeof(element) * (tack->len - 1)));
 
             if(*(tack->data + sizeof(CANARY_1) + sizeof(element) * (tack->len - 1)) == POISON)
