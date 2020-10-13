@@ -1,5 +1,8 @@
 #include "stack.h"
 
+const element CANARY_1 = 41245;
+const element CANARY_2 = 62375;
+
 void StackCreate(Stack* tack){
 
     tack->minlen = 0;
@@ -7,12 +10,13 @@ void StackCreate(Stack* tack){
     tack->len = 0;
     tack->hash = 0;
 
-    tack->data = (element*) calloc(START * sizeof(element) + sizeof(CANARY_1) + sizeof(CANARY_2), sizeof(element));
-    *(tack->data) = CANARY_1;
-    *(tack->data + sizeof(CANARY_1) + START * sizeof(element)) = CANARY_2;
+    tack->data = (element*) calloc(tack->maxlen * sizeof(element) + sizeof(CANARY_1) + sizeof(CANARY_2), sizeof(element));
+    
+    for(size_t i = 0; i < tack->maxlen; i++)
+        tack->data[i + 1] = POISON;
 
-    for(size_t i = 0; i < START; i++)
-        *(tack->data + sizeof(CANARY_1) + sizeof(element) * i) = POISON;
+    tack->data[0] = CANARY_1;
+    tack->data[tack->maxlen + 1] = CANARY_2;
 
     VERIFY;
 }
@@ -22,7 +26,7 @@ void StackDiscard(Stack* tack){
     VERIFY;
 
     for(size_t i = 0; i < tack->maxlen; ++i)
-        *(tack->data + sizeof(CANARY_1) + i * sizeof(element)) = POISON;
+        tack->data[i + 1] = POISON;
 
     tack->minlen = 0;
     tack->maxlen = 0;
@@ -40,10 +44,9 @@ element StackPop(Stack* tack){
     if(tack->len < tack->minlen)
         MemShrink(tack);
 
+    element n = tack->data[tack->len + 1];
 
-    element n = *(tack->data + sizeof(CANARY_1) + sizeof(element) * tack->len);
-
-    *(tack->data + sizeof(CANARY_1) + sizeof(element) * tack->len) = 0;
+    tack->data[tack->len + 1] = 0;
 
     tack->hash -= n * (tack->len + 1);
 
@@ -58,12 +61,12 @@ int StackPush(Stack* tack, element n){
 
     tack->len++;
 
-    if(tack->len > tack->maxlen)
+    if(tack->len >= tack->maxlen)
         MemExpand(tack);
 
-    *(tack->data + sizeof(CANARY_1) + sizeof(element) * (tack->len - 1)) = n;
+    tack->data[tack->len] = n;
 
-    tack->hash += *(tack->data + sizeof(CANARY_1) + sizeof(element) * (tack->len - 1)) * tack->len;
+    tack->hash += n * (tack->len);
 
     VERIFY;
 
@@ -80,17 +83,8 @@ void MemShrink(Stack* tack){
 
     tack->data = (element*) realloc(tack->data, sizeof(CANARY_1) + sizeof(CANARY_2) + tack->maxlen * sizeof(element));
 
-    for(size_t i = tack->len; i < tack->maxlen; ++i){
-        *(tack->data + sizeof(CANARY_1) + i * sizeof(element)) = POISON;
-    }
-
-    if(tack->data == nullptr){
-        StackDump(tack, MEMORY_WASNT_SHRINK);
-        exit(-1);
-    }
-
-    *(tack->data) = CANARY_1;
-    *(tack->data + sizeof(CANARY_1) + tack->maxlen * sizeof(element));
+    tack->data[0] = CANARY_1;
+    tack->data[tack->maxlen + 1] = CANARY_2;
 
 }
 
@@ -99,17 +93,14 @@ void MemExpand(Stack* tack){
     tack->minlen = (3 * tack->maxlen) / 4;
     tack->maxlen = tack->maxlen * 2;
 
-    tack->data = (element*) realloc(tack->data, sizeof(CANARY_1) + sizeof(CANARY_2) + tack->maxlen * sizeof(element));
+    tack->data = (element*) realloc(tack->data, sizeof(CANARY_1) + sizeof(CANARY_2) + (tack->maxlen * sizeof(element)));
 
-    if((tack->data + sizeof(CANARY_1)) == nullptr){
-        StackDump(tack, MEMORY_WASNT_EXPAND);
-        exit(-1);
+    for(size_t i = tack->len; i <= tack->maxlen; ++i){
+      tack->data[i] = POISON;
     }
 
-//    tack->data = (element*) realloc(tack->data, tack->maxlen * sizeof(element));
-
-    *(tack->data) = CANARY_1;
-    *(tack->data + sizeof(CANARY_1) + tack->maxlen * sizeof(element)) = CANARY_2;
+    tack->data[0] = CANARY_1;
+    tack->data[tack->maxlen + 1] = CANARY_2;
 
 }
 
@@ -124,16 +115,22 @@ int StackVerify(Stack* tack){
     if(tack->minlen > tack->maxlen || tack->minlen > tack->len || tack->len > tack->maxlen)
         return INVALID_SIZE;
 
-    if(*(tack->data + sizeof(CANARY_1) + tack->maxlen * sizeof(element)) != CANARY_2)
+    if(tack->data == nullptr)
+        return MEMORY_WASNT_SHRINK;
+
+    if((tack->data + sizeof(CANARY_1)) == nullptr)
+        return MEMORY_WASNT_EXPAND;
+
+    if(tack->data[tack->maxlen + 1] != CANARY_2)
         return STACK_OVERFLOW;
 
-    if(*(tack->data) != CANARY_1)
+    if(tack->data[0] != CANARY_1)
         return STACK_UNDERFLOW;
 
     size_t sum = 0;
 
     for(size_t i = 0; i < tack->len; i++)
-        sum += *(tack->data + sizeof(CANARY_1) + sizeof(element) * i) * (i + 1);
+        sum += tack->data[i + 1] * (i + 1);
 
     if(sum != tack->hash)
         return HASH_ERROR;
@@ -153,49 +150,21 @@ int StackDump(Stack* tack, int err){
 
     fprintf(code, "Number of elements = %zu\n", tack->len);
 
+    fprintf(code, "First canary = %d\n", tack->data[0]);
+
+    fprintf(code, "Second canary = %d\n", tack->data[tack->maxlen + 1]);
+
     fprintf(code, "Hash = %zu\n", tack->hash);
 
     fprintf(code, "Adress of start of the Stack = [%p]\n", (tack->data + sizeof(CANARY_1)));
 
     fprintf(code, "Some elements of Stack: \n");
-
-    if(*(tack->data + sizeof(CANARY_1)) == POISON)
-        fprintf(code, "[1]: POISON\n");
-    else
-        fprintf(code, "[1]: %lg\n", *(tack->data + sizeof(CANARY_1)));
-
-    if(*(tack->data + sizeof(CANARY_1) + sizeof(element)) == POISON)
-        fprintf(code, "[2]: POISON\n");
-    else
-        fprintf(code, "[2]: %lg\n", *(tack->data + sizeof(CANARY_1) + sizeof(element) * tack->len));
-
-    if(*(tack->data + sizeof(CANARY_1) + 2 * sizeof(element)) == POISON)
-        fprintf(code, "[3]: POISON\n");
-    else
-        fprintf(code, "[3]: %lg\n", *(tack->data + sizeof(CANARY_1) + 2 * sizeof(element) * tack->len));
-
-    if(*(tack->data + sizeof(CANARY_1) + 3 * sizeof(element)) == POISON)
-        fprintf(code, "[4]: POISON\n");
-    else
-        fprintf(code, "[4]: %lg\n", 
-                *(tack->data + sizeof(CANARY_1) + 3 * sizeof(element) * tack->len));
-
-    fprintf(code, ".........\n");
-
-    fprintf(code, "[i]: data[i]\n");
-
-    fprintf(code, ".........\n");
-
-    if(tack->len > 3){
-
-        fprintf(code, "[%zu]: %lg\n", tack->len, *(tack->data + sizeof(CANARY_1) + sizeof(element) * (tack->len - 1)));
-
-            if(*(tack->data + sizeof(CANARY_1) + sizeof(element) * (tack->len - 1)) == POISON)
-                fprintf(code, "[%zu]: POISON\n", tack->len);
-            else
-                fprintf(code, "[%zu]: %lg\n", tack->len, *(tack->data + sizeof(CANARY_1) + sizeof(element) * (tack->len - 1)));
+    for(size_t i = 1; i <= tack->maxlen; i++){
+        if(tack->data[i] == POISON)
+            fprintf(code, "[%zu]: POISON\n", i);
+        else
+            fprintf(code, "[%zu]: %d\n", i, tack->data[i]);
     }
-
     fprintf(code, "What happened: ");
 
     switch(err){

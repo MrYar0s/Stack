@@ -5,14 +5,14 @@ int main(){
     Stack steck;
 
     StackCreate(&steck);
-    
-    StackPush(&steck, 2);
 
-    for(size_t p = 0; p < steck.len; p++){
-        printf("\n%f ", *(steck.data + sizeof(CANARY_1) + sizeof(element) * p));
+    for(size_t i = 1; i <= 100; ++i){
+        StackPush(&steck, i);
     }
 
-    StackDiscard(&steck);
+    StackDump(&steck, 0);
+
+    //StackDiscard(&steck);
     
     return 0;
 }

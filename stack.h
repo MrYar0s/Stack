@@ -4,12 +4,10 @@
 #include <string.h>
 
 #define START 10
-#define CANARY_1 23637
-#define CANARY_2 97654
 #define VERIFY if(StackVerify(tack) != 0){StackDump(tack, StackVerify(tack)); exit(-1);}
-const int POISON = 1357;
+#define POISON 1357
 
-typedef double element;
+typedef int element;
 
 struct Stack{
     size_t minlen = 0;
