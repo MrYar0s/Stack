@@ -1,0 +1,21 @@
+#####ERROR#####
+Upper limit = 10
+Lower limit = 18446744073709551615
+Number of elements = 0
+First canary = D
+Second canary = B
+Hash = 0
+Adress of start of the Stack = [0x5634bde992a1]
+Some elements of Stack: 
+[1]: POISON
+[2]: POISON
+[3]: POISON
+[4]: POISON
+[5]: POISON
+[6]: POISON
+[7]: POISON
+[8]: POISON
+[9]: POISON
+[10]: POISON
+What happened: INVALID SIZE
+CODE ERROR: 30
